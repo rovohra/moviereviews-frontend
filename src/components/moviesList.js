@@ -15,16 +15,41 @@ const MoviesList = props => {
   const [searchRating, setSearchRating] = useState("")
   const [ratings, setRatings] = useState(["All Ratings"])
 
+  const [currentPage, setCurrentPage] = useState(0)
+  const [entriesPerPage, setEntriesPerPage] = useState(0)
+  const [currentSearchMode, setCurrentSearchMode] = useState("")
+
   useEffect(() => {
     retrieveMovies()
     retrieveRatings()
   }, [])
 
+  useEffect(() => {
+    retrieveNextPage()
+  }, [currentPage])
+
+  useEffect( () => {
+    setCurrentPage(0)
+  }, [currentSearchMode])  
+
+  const retrieveNextPage = () => {
+    if(currentSearchMode === "findByTitle") {
+      findByTitle()
+    } else if(currentSearchMode === "findByRating") {
+      findByRating()
+    } else {
+      retrieveMovies()
+    }
+  }  
+
   const retrieveMovies = () => {
-    MovieDataService.getAll()
+    setCurrentSearchMode("")
+    MovieDataService.getAll(currentPage)
       .then(response => {
         console.log(response.data)
         setMovies(response.data.movies)
+        setCurrentPage(response.data.page)
+        setEntriesPerPage(response.data.entries_per_page)
       })
       .catch(e => {
         console.log(e)
@@ -54,7 +79,7 @@ const MoviesList = props => {
   }
 
   const find = (query, by) => {
-    MovieDataService.find(query, by)
+    MovieDataService.find(query, by, currentPage)
       .then(response => {
         console.log(response.data)
         setMovies(response.data.movies)
@@ -64,19 +89,21 @@ const MoviesList = props => {
       })
   }
 
-  const findByTitle =
-    () => {
-      find(searchTitle, "title")
-    }
+  const findByTitle = () => {
+    setSearchRating("")
+    setCurrentSearchMode("findByTitle")
+    find(searchTitle, "title")
+  }
 
-  const findByRating =
-    () => {
-      if (searchRating === "All Ratings") {
-        retrieveMovies()
-      } else {
-        find(searchRating, "rated")
-      }
+  const findByRating = () => {
+    setSearchTitle("")
+    setCurrentSearchMode("findByRating")
+    if (searchRating === "All Ratings") {
+      retrieveMovies()
+    } else {
+      find(searchRating, "rated")
     }
+  }
 
   return (
     <div className="App">
@@ -106,7 +133,8 @@ const MoviesList = props => {
                   as="select" onChange={onChangeSearchRating} >
                   {ratings.map(rating => {
                     return (
-                      <option value={rating}>{rating}</option>
+                      <option value={rating}
+                      selected={rating === searchRating} >{rating}</option>
                     )
                   })}
                 </Form.Control>
@@ -140,6 +168,13 @@ const MoviesList = props => {
             )
           })}
         </Row>
+        <br />
+        Showing Page: {currentPage}
+        <Button
+          variant="link"
+          onClick={() => { setCurrentPage(currentPage + 1) }} >
+          Get Next {entriesPerPage} Results
+        </Button>
       </Container>
     </div>
   );
